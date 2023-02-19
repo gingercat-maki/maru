@@ -77,7 +77,7 @@ func main() {
 	select {}
 }
 
-func createNamespaceIfNeeded(logger *zap.Logger, namespace string, hostPort string, tlsConfig *tls.Config) {
+func createNamespaceIfeeded(logger *zap.Logger, namespace string, hostPort string, tlsConfig *tls.Config) {
 	logger.Info("Creating namespace", zap.String("namespace", namespace), zap.String("hostPort", hostPort))
 
 	createNamespace := func() error {
@@ -183,7 +183,7 @@ func startWorkers(
 	if !skipNamespaceCreation {
 		createNamespaceIfNeeded(logger, namespace, hostPort, tlsConfig)
 	}
-
+	// monitor clients side @maki TODO
 	serviceClient, err := client.Dial(client.Options{
 		Namespace: namespace,
 		HostPort:  hostPort,

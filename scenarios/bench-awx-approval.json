@@ -1,0 +1,19 @@
+{
+    "steps": [{
+        "count": 100,
+        "concurrency": 10
+    }],
+    "workflow": {
+        "name": "ApprovalExecutionWorkflow",
+        "taskQueue": "tp_queue_approval_test_v1",
+        "args":
+            {"accountId":"24d418c7-9ca7-4e28-9675-626bdffc4ba1",
+                "configCategory":"spend.expense",
+                "inputValue":"{\"amount\":10000}",
+                "requesterId":"ce7e9fba-c883-4e8f-a51a-4f1897e50b64",
+                "sourceId":"48d334cd-6da1-4583-901e-f4382fd024c9",
+                "startSubmitTime":1676954309802
+            }
+    }
+}
+
