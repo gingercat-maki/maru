@@ -1,0 +1,13 @@
+{
+    "sequenceCount": 2,
+    "parallelCount": 2,
+    "description": "test of all features supported by MaruX",
+    "activityDurationMilliseconds": 40,
+    "payload": "test payload",
+    "resultPayload": "test result payload",
+
+    "enabledSignal": false,
+    "enabledLocalActivity": true,
+    "enabledSagaWithTransfer": true,
+    "enabledChildWorkflow": true
+}

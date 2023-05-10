@@ -45,3 +45,5 @@ func Activity(ctx context.Context, req basicActivityRequest) (string, error) {
 	logger.Info("Activity: end")
 	return req.ResultPayload, nil
 }
+
+
