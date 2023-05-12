@@ -23,9 +23,10 @@ package basic
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
-	samples "github.com/temporalio/samples-go/await-signals"
+	"github.com/temporalio/maru/target"
 	sampleschild "github.com/temporalio/samples-go/child-workflow"
 	sampleslocal "github.com/temporalio/samples-go/greetingslocal"
 	samplessaga "github.com/temporalio/samples-go/saga"
@@ -33,10 +34,9 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-const taskQueue = "temporal-basic-act"
-
 type WorkflowRunningContext struct {
 	RawRequestPayload WorkflowRequest `json:"rawRequestPayload"`
+	Counter           int64
 }
 
 // TODO: how to query from the bench? traffic-generator/trigger; vary-patterned-workflows; reporters;
@@ -44,58 +44,43 @@ type WorkflowRunningContext struct {
 func Workflow(ctx workflow.Context, request WorkflowRequest) (string, error) {
 
 	logger := workflow.GetLogger(ctx)
-	logger.Info("basic workflow started", "activity task queue", taskQueue)
 	wrc := WorkflowRunningContext{}
 
+	// innate feature: Query
 	err := workflow.SetQueryHandler(
-		ctx, "queryContext", func() (string, error) {
+		ctx, target.QueryHandlerName, func() (string, error) {
 			wrcInBytes, err := json.Marshal(wrc)
 			return string(wrcInBytes[:]), err
 		})
 	if err != nil {
-		logger.Error("setQueryHandler fails,", "err", err)
+		logger.Error("setQueryHandler-queryContext fails,", "err", err)
 		return "", err
 	}
 
-	// Currently: 1) we just put the modules here in sequential to prove they can be run
-	// 2) combinations of modules
+	// innate feature: Update
+	if err := workflow.SetUpdateHandlerWithOptions(
+		ctx,
+		target.UpdateHandlerName,
+		func(ctx workflow.Context, i int64) (int64, error) {
+			tmp := wrc.Counter
+			wrc.Counter += i
+			logger.Info("counter updated", "addend", i, "new-value", wrc.Counter)
+			return tmp, nil
+		},
+		workflow.UpdateHandlerOptions{Validator: nonNegative},
+	); err != nil {
+		return "", err
+	}
 
-	// poc:implement a signal module
-	if request.EnabledSignal {
-		// TODO: this doesn't need add activity workers, but others may need this
-		err := samples.AwaitSignalsWorkflow(ctx)
+	// module: await on signal, this module requires signals to proceed
+	if request.EnabledAwaitSignal {
 		if err != nil {
 			logger.Error("awaitSignals fails,", "err", err)
 			return "", err
 		}
 	}
 
-	// module: localacitivty
-	if request.EnabledLocalActivity {
-		// TODO: this has activities,
-		// need to register activities
-		// but local activities doesn't need a seperate queue
-		// nor a seprate worker
-		_, err := sampleslocal.GreetingSample(ctx)
-		if err != nil {
-			logger.Error("localActivity fails,", "err", err)
-			return "", err
-		}
-	}
-
-	// module:normal part (saga with transfers)
-	// TODO: this has activities, should register
-	// TODO: but we can stay with one queues? this kinds of becomes a handler of the bottleneck? all traffic of all types in one queue?
-	// queue: is handled in starter & worker, so we manipulate queue in the starter and worker part
-	if request.EnabledSagaWithTransfer {
-		err = samplessaga.TransferMoney(ctx, request.TransferDetailsRequest)
-		if err != nil {
-			// TODO: this fails the workflow after rollback,
-			// so cannot return err to stop the wf
-			logger.Error("sagaWithTransfer fails with rollback,", "err", err)
-		}
-	}
-
+	// module: a group of childworfklows and continues as new on end
 	if request.EnabledChildWorkflow {
 		_, err = sampleschild.SampleParentWorkflow(ctx)
 		if err != nil {
@@ -104,10 +89,29 @@ func Workflow(ctx workflow.Context, request WorkflowRequest) (string, error) {
 		}
 	}
 
+	// module: localacitivty
+	if request.EnabledLocalActivity {
+		_, err := sampleslocal.GreetingSample(ctx)
+		if err != nil {
+			logger.Error("localActivity fails,", "err", err)
+			return "", err
+		}
+	}
+
+	// module: transfer in saga pattern, and has a designed error and will rollback
+	if request.EnabledSagaWithTransfer {
+		err = samplessaga.TransferMoney(ctx, request.TransferDetailsRequest)
+		if err != nil {
+			// the err is expected
+			// so cannot return err to stop the wf
+			logger.Error("sagaWithTransfer fails with rollback,", "err", err)
+		}
+	}
+
 	// normal Activity Part
 	// TODO: plans to disable this part of workflow
 	ao := workflow.ActivityOptions{
-		TaskQueue: taskQueue,
+		TaskQueue: target.ActivityQueue,
 		StartToCloseTimeout: time.Duration(
 			request.ActivityDurationMilliseconds)*time.Millisecond + 10*time.Minute,
 	}
@@ -145,4 +149,14 @@ func Workflow(ctx workflow.Context, request WorkflowRequest) (string, error) {
 
 	logger.Info("basic workflow completed")
 	return request.ResultPayload, nil
+}
+
+func nonNegative(ctx workflow.Context, i int) error {
+	logger := workflow.GetLogger(ctx)
+	if i < 0 {
+		logger.Debug("Rejecting negative update", "addend", i)
+		return fmt.Errorf("addend must be non-negative (%v)", i)
+	}
+	logger.Debug("Accepting update", "addend", i)
+	return nil
 }

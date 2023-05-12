@@ -6,6 +6,7 @@ import (
 
 // WorkflowRequest is used for starting workflow
 // the parameters control the pattern of the workflow
+// components that need no enable: queries, updates
 type WorkflowRequest struct {
 	SequenceCount                int    `json:"sequenceCount"`
 	ParallelCount                int    `json:"parallelCount"`
@@ -14,17 +15,9 @@ type WorkflowRequest struct {
 	ResultPayload                string `json:"resultPayload"`
 
 	// injected modules
-	LocalActivitiesModule
-	SignalAwaitsModule
+	EnabledAwaitSignal   bool `json:"enabledAwaitSignal"`
+	EnabledLocalActivity bool `json:"enabledLocalActivity"`
+
 	modules.ChildWorkflowRequest
 	modules.SagaTransferRequest
-}
-
-// SimpleModules: with no payload/workflow/register change
-type LocalActivitiesModule struct {
-	EnabledLocalActivity bool `json:"enabledLocalActivity"`
-}
-
-type SignalAwaitsModule struct {
-	EnabledSignal bool `json:"enabledSignal"`
 }
