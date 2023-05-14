@@ -155,6 +155,7 @@ func (w *benchWorkflow) executeDriverActivities(stepIndex int, step benchWorkflo
 	var futures []workflow.Future
 
 	for i := 0; i < concurrency; i++ {
+		// mk:goroutine starts
 		futures = append(futures, workflow.ExecuteActivity(
 			w.withActivityOptions(),
 			"bench-DriverActivity",

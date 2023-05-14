@@ -10,15 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
-
-func init() {
-	var err error
-	logger, err = zap.NewDevelopment()
-	if err != nil {
-		panic(err)
-	}
-}
-
+// TODO:
 // trigger methods
 func TriggerAwaitSignal(c client.Client, we client.WorkflowRun) {
 	signals := []int{1, 2, 3}

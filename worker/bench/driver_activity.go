@@ -25,12 +25,13 @@ package bench
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/pkg/errors"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/log"
 	"golang.org/x/time/rate"
-	"time"
 )
 
 func (a *Activities) DriverActivity(ctx context.Context, request benchDriverActivityRequest) error {
@@ -49,7 +50,7 @@ type (
 		WorkflowName  string
 		TaskQueueName string
 		BaseID        string
-		BatchSize     int
+		BatchSize     int // count of the worfklows to start in this batch
 		Rate          int
 		Parameters    interface{}
 	}
