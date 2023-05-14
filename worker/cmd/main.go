@@ -45,6 +45,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/temporalio/maru/bench"
+	"github.com/temporalio/maru/target"
 	"github.com/temporalio/maru/target/basic"
 
 	prom "github.com/prometheus/client_golang/prometheus"
@@ -52,6 +53,8 @@ import (
 	"github.com/uber-go/tally/v4/prometheus"
 	sdktally "go.temporal.io/sdk/contrib/tally"
 )
+
+// tctl --address localhost:7233 --namespace default wf start --tq temporal-basic --wt basic-workflow --wtt 5 --et 1800 --if ./scenarios/basic-awx.json export TEMPORAL_CLI_SHOW_STACKS=1
 
 func main() {
 	logger, err := zap.NewDevelopment()
@@ -61,8 +64,8 @@ func main() {
 
 	logger.Info("Zap logger created")
 	namespace := getEnvOrDefaultString(logger, "NAMESPACE", client.DefaultNamespace)
-	hostPort := getEnvOrDefaultString(logger, "FRONTEND_ADDRESS", client.DefaultHostPort)
-	skipNamespaceCreation := getEnvOrDefaultBool(logger, "SKIP_NAMESPACE_CREATION", false)
+	hostPort := getEnvOrDefaultString(logger, "FRONTEND_ADDRESS", "127.0.0.1:7233")
+	skipNamespaceCreation := getEnvOrDefaultBool(logger, "SKIP_NAMESPACE_CREATION", true)
 
 	tlsConfig, err := getTLSConfig(hostPort, logger)
 	if err != nil {
@@ -251,18 +254,23 @@ func constructBenchWorker(ctx context.Context, serviceClient client.Client, logg
 	w := worker.New(serviceClient, taskQueue, buildWorkerOptions(ctx, logger))
 	w.RegisterWorkflowWithOptions(bench.Workflow, workflow.RegisterOptions{Name: "bench-workflow"})
 	w.RegisterActivityWithOptions(bench.NewActivities(serviceClient), activity.RegisterOptions{Name: "bench-"})
+	logger.Info(fmt.Sprintf("bench worker starts %s", taskQueue))
 	return w
 }
 
 func constructBasicWorker(ctx context.Context, serviceClient client.Client, logger *zap.Logger, taskQueue string) worker.Worker {
 	w := worker.New(serviceClient, taskQueue, buildWorkerOptions(ctx, logger))
-	w.RegisterWorkflowWithOptions(basic.Workflow, workflow.RegisterOptions{Name: "basic-workflow"})
+	w.RegisterWorkflowWithOptions(target.Workflow, workflow.RegisterOptions{Name: "basic-workflow"})
+	// extension
+	target.RegisterModules(w)
+	logger.Info(fmt.Sprintf("basic worker starts %s", taskQueue))
 	return w
 }
 
 func constructBasicActWorker(ctx context.Context, serviceClient client.Client, logger *zap.Logger, taskQueue string) worker.Worker {
 	w := worker.New(serviceClient, taskQueue, buildWorkerOptions(ctx, logger))
 	w.RegisterActivityWithOptions(basic.Activity, activity.RegisterOptions{Name: "basic-activity"})
+	logger.Info(fmt.Sprintf("basic activity worker starts %s", taskQueue))
 	return w
 }
 

@@ -10,8 +10,7 @@
 // furnished to do so, subject to the following conditions:
 //
 // The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
+// all copies or substantial portions of the Software.  //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -25,30 +24,19 @@ package basic
 import (
 	"time"
 
+	"github.com/temporalio/maru"
+	"github.com/temporalio/maru/internal"
 	"go.temporal.io/sdk/workflow"
 )
 
-// WorkflowRequest is used for starting workflow for Basic bench workflow
-type workflowRequest struct {
-	SequenceCount                int    `json:"sequenceCount"`
-	ParallelCount                int    `json:"parallelCount"`
-	ActivityDurationMilliseconds int    `json:"activityDurationMilliseconds"`
-	Payload                      string `json:"payload"`
-	ResultPayload                string `json:"resultPayload"`
-}
-
-const taskQueue = "temporal-basic-act"
-
-// Workflow implements a basic bench scenario to schedule activities in sequence.
-func Workflow(ctx workflow.Context, request workflowRequest) (string, error) {
+func WorkflowWithNormalActivity(ctx workflow.Context, request internal.NormalActivityRequest) (string, error) {
 
 	logger := workflow.GetLogger(ctx)
 
-	logger.Info("basic workflow started", "activity task queue", taskQueue)
-
 	ao := workflow.ActivityOptions{
-		TaskQueue:           taskQueue,
-		StartToCloseTimeout: time.Duration(request.ActivityDurationMilliseconds)*time.Millisecond + 10 * time.Minute,
+		TaskQueue: maru.ActivityQueue,
+		StartToCloseTimeout: time.Duration(
+			request.ActivityDurationMilliseconds)*time.Millisecond + 10*time.Minute,
 	}
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
@@ -60,8 +48,8 @@ func Workflow(ctx workflow.Context, request workflowRequest) (string, error) {
 	for i := 0; i < request.SequenceCount; i++ {
 		req := basicActivityRequest{
 			ActivityDelayMilliseconds: request.ActivityDurationMilliseconds,
-			Payload:                   request.Payload,
-			ResultPayload:             request.ResultPayload,
+			Payload:                   request.ActivityPayload,
+			ResultPayload:             request.ActivityResultPayload,
 		}
 
 		futures := make([]workflow.Future, parallelCount)
@@ -83,5 +71,5 @@ func Workflow(ctx workflow.Context, request workflowRequest) (string, error) {
 	}
 
 	logger.Info("basic workflow completed")
-	return request.ResultPayload, nil
+	return request.ActivityPayload, nil
 }
