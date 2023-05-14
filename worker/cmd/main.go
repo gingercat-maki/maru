@@ -45,6 +45,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/temporalio/maru/bench"
+	"github.com/temporalio/maru/target"
 	"github.com/temporalio/maru/target/basic"
 
 	prom "github.com/prometheus/client_golang/prometheus"
@@ -259,9 +260,9 @@ func constructBenchWorker(ctx context.Context, serviceClient client.Client, logg
 
 func constructBasicWorker(ctx context.Context, serviceClient client.Client, logger *zap.Logger, taskQueue string) worker.Worker {
 	w := worker.New(serviceClient, taskQueue, buildWorkerOptions(ctx, logger))
-	w.RegisterWorkflowWithOptions(basic.Workflow, workflow.RegisterOptions{Name: "basic-workflow"})
+	w.RegisterWorkflowWithOptions(target.Workflow, workflow.RegisterOptions{Name: "basic-workflow"})
 	// extension
-	basic.RegisterModules(w)
+	target.RegisterModules(w)
 	logger.Info(fmt.Sprintf("basic worker starts %s", taskQueue))
 	return w
 }
@@ -269,8 +270,6 @@ func constructBasicWorker(ctx context.Context, serviceClient client.Client, logg
 func constructBasicActWorker(ctx context.Context, serviceClient client.Client, logger *zap.Logger, taskQueue string) worker.Worker {
 	w := worker.New(serviceClient, taskQueue, buildWorkerOptions(ctx, logger))
 	w.RegisterActivityWithOptions(basic.Activity, activity.RegisterOptions{Name: "basic-activity"})
-	logger.Info(fmt.Sprintf("registered saga-transfer activities"))
-
 	logger.Info(fmt.Sprintf("basic activity worker starts %s", taskQueue))
 	return w
 }
